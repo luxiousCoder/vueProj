@@ -2,10 +2,12 @@
 import { onMounted, ref } from 'vue'
 import { threeScene } from '@/utils/index'
 
-const globalScene = ref()
+let globalScene: threeScene
 
 onMounted(() => {
-  globalScene.value = new threeScene('canvas')
+  globalScene = new threeScene('canvas')
+  globalScene.addEllipseCurve(20, 20)
+  console.log(globalScene.scene)
 })
 </script>
 
@@ -15,7 +17,8 @@ onMounted(() => {
 
 <style scoped>
 .drawCanvas {
-  width: 80%;
-  height: 70%;
+  width: 100%;
+  height: 100%;
+  background-color: transparent;
 }
 </style>

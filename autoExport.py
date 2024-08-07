@@ -89,15 +89,15 @@ def generate_index_and_router(directory,components_directory, views_index_file, 
                 store_f.write(f"export * from './{module_name}';\n")
 
 if __name__ == "__main__":
-    directory = "./views"  # 替换为你的文件夹路径
-    components_directory = "./components"  # 替换为你的文件夹路径
-    views_index_file = "./views/index.ts"  # 生成的导出文件名
-    components_index_file = "./components/index.ts"  # 生成的导出文件名
-    router_index_file = "./router/index.ts"  # 生成的路由文件名
-    store_file = "./stores/viewsInfo.ts"
-    store_file_directory = "./stores"
-    store_index_file = "./stores/index.ts"
-    utils_file_directory = "./utils"
-    utils_index_file = "./utils/index.ts"
+    directory = "./src/views"  # 替换为你的文件夹路径
+    components_directory = "./src/components"  # 替换为你的文件夹路径
+    views_index_file = "./src/views/index.ts"  # 生成的导出文件名
+    components_index_file = "./src/components/index.ts"  # 生成的导出文件名
+    router_index_file = "./src/router/index.ts"  # 生成的路由文件名
+    store_file = "./src/stores/viewsInfo.ts"
+    store_file_directory = "./src/stores"
+    store_index_file = "./src/stores/index.ts"
+    utils_file_directory = "./src/utils"
+    utils_index_file = "./src/utils/index.ts"
     generate_index_and_router(directory,components_directory, views_index_file, components_index_file,router_index_file,store_file,store_file_directory,store_index_file,utils_file_directory,utils_index_file)
     print(f"Generated {views_index_file} ; {components_index_file};{router_index_file}")

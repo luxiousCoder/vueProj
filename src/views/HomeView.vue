@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import router from '@/router'
 import { useViewsInfoStore } from '@/stores/index'
 
@@ -8,6 +8,8 @@ const counter = useViewsInfoStore()
 const loadviews = (routerName: any) => {
   router.push(routerName)
 }
+
+onMounted(() => {})
 </script>
 
 <template>
@@ -25,20 +27,21 @@ const loadviews = (routerName: any) => {
 
 <style lang="scss" scoped>
 .home {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
   .routerbox {
     height: 20vh;
     width: 10vw;
-    flex: auto;
-    padding-top: 10vh;
+    margin-top: 5vh;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
     text-align: center;
     box-sizing: border-box;
     font-size: 1.3vw;
     background-color: aquamarine;
-    padding-bottom: 4vh;
-    margin-bottom: 2vw;
-    display: inline-block;
-    margin-left: 10vw;
-    margin-top: 2vh;
     cursor: pointer;
   }
 }
