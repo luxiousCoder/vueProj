@@ -193,6 +193,7 @@ export class threeScene {
     curveGroup.add(ellipse)
     curveGroup.add(ellipseLine)
     this.scene.add(curveGroup)
+    return ellipse
   }
 
   /**
@@ -265,10 +266,23 @@ export class threeScene {
     mouse.y = -((eventclientY - getBoundingClientRect.top) / this.canvas.clientHeight) * 2 + 1
   }
 
-  addLine = () => {
+  addLine = (points: any) => {
+    const geometry = new THREE.BufferGeometry().setFromPoints(points)
+    const material = new THREE.LineBasicMaterial({ color: 0x155155 })
+    const line = new THREE.Line(geometry, material)
+    this.scene.add(line)
+    console.log(line)
+
+    return line
+  }
+
+  plot = () => {
     let point = []
     let secondPoint: any
-    this.addEllipseCurve(20, 20)
+    let line: any
+    let arr1 = []
+    const curve = this.addEllipseCurve(20, 20)
+    arr1.push(curve)
 
     const onMouseDown1 = (event) => {
       if (event.button === 0) {
@@ -284,14 +298,18 @@ export class threeScene {
         raycaster.setFromCamera(mouse, this.camera)
 
         // 计算射线与场景中物体的相交情况
-        const intersects = raycaster.intersectObjects(this.scene.children, true)
+        const intersects = raycaster.intersectObjects(arr1, true)
         if (intersects.length > 0) {
           const intersection = intersects[0]
           const intersectedObject = intersection.object
           const intersectedPoint = intersection.point.clone()
           const localIntersection = intersection.object.worldToLocal(intersectedPoint)
-          this.addPoint([localIntersection.x, localIntersection.y, localIntersection.z])
-          point.push({ a: '' })
+          const point1 = this.addPoint([
+            localIntersection.x,
+            localIntersection.y,
+            localIntersection.z
+          ])
+          point.push([localIntersection.x, localIntersection.y, localIntersection.z])
           console.log(point.length)
           window.addEventListener('mousemove', onMouseMove)
         }
@@ -308,7 +326,7 @@ export class threeScene {
       // 更新射线投射器
       raycaster.setFromCamera(mouse, this.camera)
       // 计算射线与场景中物体的相交情况
-      const intersects = raycaster.intersectObjects(this.scene.children, false)
+      const intersects = raycaster.intersectObjects(arr1, false)
       if (intersects.length > 0) {
         const intersection = intersects[0]
         const intersectedObject = intersection.object
@@ -320,7 +338,22 @@ export class threeScene {
             localIntersection.y,
             localIntersection.z
           ])
+          const point11 = new THREE.Vector3(
+            localIntersection.x,
+            localIntersection.y,
+            localIntersection.z
+          )
+          const point12 = new THREE.Vector3(point[0][0], point[0][1], point[0][2])
+          line = this.addLine([point11, point12])
         } else {
+          const point11 = new THREE.Vector3(
+            localIntersection.x,
+            localIntersection.y,
+            localIntersection.z
+          )
+          const point12 = new THREE.Vector3(point[0][0], point[0][1], point[0][2])
+          const geometry1 = new THREE.BufferGeometry().setFromPoints([point11, point12])
+          line.geometry = geometry1
           const geometry = new THREE.BufferGeometry()
           geometry.setAttribute(
             'position',
@@ -341,7 +374,7 @@ export class threeScene {
         })
       }
     }
-    window.addEventListener('mousemove', onMouseMove, false)
-    // window.addEventListener('pointerdown', onMouseDown1, false)
+    // window.addEventListener('mousemove', onMouseMove, false)
+    window.addEventListener('pointerdown', onMouseDown1, false)
   }
 }

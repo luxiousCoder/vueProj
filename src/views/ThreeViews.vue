@@ -16,7 +16,7 @@ onMounted(() => {
       <button @click="globalScene?.addPickListener()">addPickListener</button>
       <button @click="globalScene?.addEllipseCurve(20, 20)">addEllipseCurve</button>
       <button @click="globalScene?.removePickListener()">removePickListener</button>
-      <button @click="globalScene?.addLine">addLine</button>
+      <button @click="globalScene?.plot">plot</button>
     </div>
     <div class="canvasField">
       <canvas id="canvas" class="drawCanvas"> </canvas>
