@@ -1,33 +1,44 @@
 import * as THREE from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { ref } from 'vue'
 
 export class threeScene {
   canvas: HTMLElement | null
   scene: THREE.Scene
   camera: THREE.Camera
   renderer: THREE.WebGLRenderer
+  pickedText: any = ''
   constructor(canvasId: string) {
+    this.pickedText = ''
     this.canvas = document.getElementById(canvasId)
     // 创建3D场景对象Scene
     this.scene = new THREE.Scene()
-    // 定义threejs输出画布的尺寸(单位:像素px)
-    const width = this.canvas.clientWidth
-    const height = this.canvas.clientHeight
-    const aspect = width / height
-    // 定义相机视景体边界
-    const frustumSize = 40
-    const halfFrustumWidth = (frustumSize * aspect) / 2
-    const halfFrustumHeight = frustumSize / 2
-    // 创建场景、相机和渲染器
-    this.camera = new THREE.OrthographicCamera(
-      -halfFrustumWidth,
-      halfFrustumWidth, // left, right
-      halfFrustumHeight,
-      -halfFrustumHeight, // top, bottom
-      0.1,
-      1000 // near, far
+    this.camera = new THREE.PerspectiveCamera(
+      45,
+      this.canvas.clientWidth / this.canvas.clientHeight,
+      1,
+      1000
     )
-    this.camera.position.set(0, 0, 10)
-    this.camera.lookAt(0, 0, 10)
+    this.camera.position.z = 120
+    // // 定义threejs输出画布的尺寸(单位:像素px)
+    // const width = this.canvas.clientWidth
+    // const height = this.canvas.clientHeight
+    // const aspect = width / height
+    // // 定义相机视景体边界
+    // const frustumSize = 80
+    // const halfFrustumWidth = (frustumSize * aspect) / 2
+    // const halfFrustumHeight = frustumSize / 2
+    // // 创建场景、相机和渲染器
+    // this.camera = new THREE.OrthographicCamera(
+    //   -halfFrustumWidth,
+    //   halfFrustumWidth, // left, right
+    //   halfFrustumHeight,
+    //   -halfFrustumHeight, // top, bottom
+    //   0.1,
+    //   1000 // near, far
+    // )
+    // this.camera.position.set(0, 0, 10)
+    // this.camera.lookAt(0, 0, 10)
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas, //渲染结果输出画布：canvas
       antialias: true,
@@ -35,8 +46,12 @@ export class threeScene {
       preserveDrawingBuffer: true,
       alpha: true // 是否可以设置背景色透明
     })
-    this.renderer.setSize(width, height) //设置three.js渲染区域的尺寸(像素px)
-    this.renderer.setClearColor(0x000000, 0)
+    this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight) //设置three.js渲染区域的尺寸(像素px)
+    this.renderer.setClearColor(0x155155, 0.1)
+    const controls = new OrbitControls(this.camera, this.renderer.domElement)
+    controls.enabled = true
+    const axesHelper = new THREE.AxesHelper(5)
+    this.scene.add(axesHelper)
     this.animate()
   }
 
@@ -96,6 +111,30 @@ export class threeScene {
     coneLine.name = 'coneLine'
     triangle.add(coneLine)
     this.scene.add(triangle)
+  }
+
+  addBox = () => {
+    const geometry = new THREE.BoxGeometry(10, 10, 10, 20, 1, 1)
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 })
+    const cube = new THREE.Mesh(geometry, material)
+    this.scene.add(cube)
+    const edges = new THREE.EdgesGeometry(geometry)
+    const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000 })
+    const lineSegments = new THREE.LineSegments(edges, lineMaterial)
+    this.scene.add(lineSegments)
+  }
+
+  addPoint = (vertices: any) => {
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
+
+    const material = new THREE.PointsMaterial({ color: 0x888888 })
+
+    const points = new THREE.Points(geometry, material)
+
+    this.scene.add(points)
+
+    return points
   }
 
   /**
@@ -181,5 +220,128 @@ export class threeScene {
       new THREE.Shape(new THREE.Path(curve.getPoints(64)).getPoints())
     )
     ellipseLine.geometry = new THREE.BufferGeometry().setFromPoints(curve.getPoints(64))
+  }
+
+  onMouseDown = (event) => {
+    if (event.button === 0) {
+      console.log('down')
+
+      // 将鼠标坐标转换到归一化设备坐标 (NDC) -1到1范围内
+      const raycaster = new THREE.Raycaster()
+      const mouse = new THREE.Vector2()
+      let getBoundingClientRect = this.canvas.getBoundingClientRect()
+      mouse.x = ((event.clientX - getBoundingClientRect.left) / this.canvas.clientWidth) * 2 - 1
+      mouse.y = -((event.clientY - getBoundingClientRect.top) / this.canvas.clientHeight) * 2 + 1
+      // 更新射线投射器
+      raycaster.setFromCamera(mouse, this.camera)
+
+      // 计算射线与场景中物体的相交情况
+      const intersects = raycaster.intersectObjects(this.scene.children, true)
+      if (intersects.length > 0) {
+        const intersection = intersects[0]
+        const intersectedObject = intersection.object
+        const intersectedPoint = intersection.point.clone()
+        const localIntersection = intersection.object.worldToLocal(intersectedPoint)
+        this.addPoint([localIntersection.x, localIntersection.y, localIntersection.z])
+        this.pickedText = [intersectedObject, intersectedPoint]
+        console.log(this.pickedText)
+      }
+    }
+  }
+
+  addPickListener = () => {
+    // 监听鼠标移动事件
+    window.addEventListener('pointerdown', this.onMouseDown, false)
+  }
+
+  removePickListener = () => {
+    window.removeEventListener('pointerdown', this.onMouseDown)
+  }
+
+  convertPos = (eventclientX: any, eventclientY: any) => {
+    const mouse = new THREE.Vector2()
+    let getBoundingClientRect = this.canvas.getBoundingClientRect()
+    mouse.x = ((eventclientX - getBoundingClientRect.left) / this.canvas.clientWidth) * 2 - 1
+    mouse.y = -((eventclientY - getBoundingClientRect.top) / this.canvas.clientHeight) * 2 + 1
+  }
+
+  addLine = () => {
+    let point = []
+    let secondPoint: any
+    this.addEllipseCurve(20, 20)
+
+    const onMouseDown1 = (event) => {
+      if (event.button === 0) {
+        // 将鼠标坐标转换到归一化设备坐标 (NDC) -1到1范围内
+
+        const raycaster = new THREE.Raycaster()
+        const mouse = new THREE.Vector2()
+        let getBoundingClientRect = this.canvas.getBoundingClientRect()
+        mouse.x = ((event.clientX - getBoundingClientRect.left) / this.canvas.clientWidth) * 2 - 1
+        mouse.y = -((event.clientY - getBoundingClientRect.top) / this.canvas.clientHeight) * 2 + 1
+
+        // 更新射线投射器
+        raycaster.setFromCamera(mouse, this.camera)
+
+        // 计算射线与场景中物体的相交情况
+        const intersects = raycaster.intersectObjects(this.scene.children, true)
+        if (intersects.length > 0) {
+          const intersection = intersects[0]
+          const intersectedObject = intersection.object
+          const intersectedPoint = intersection.point.clone()
+          const localIntersection = intersection.object.worldToLocal(intersectedPoint)
+          this.addPoint([localIntersection.x, localIntersection.y, localIntersection.z])
+          point.push({ a: '' })
+          console.log(point.length)
+          window.addEventListener('mousemove', onMouseMove)
+        }
+      }
+    }
+
+    const onMouseMove = (event) => {
+      window.removeEventListener('pointerdown', onMouseDown1)
+      const raycaster = new THREE.Raycaster()
+      const mouse = new THREE.Vector2()
+      let getBoundingClientRect = this.canvas.getBoundingClientRect()
+      mouse.x = ((event.clientX - getBoundingClientRect.left) / this.canvas.clientWidth) * 2 - 1
+      mouse.y = -((event.clientY - getBoundingClientRect.top) / this.canvas.clientHeight) * 2 + 1
+      // 更新射线投射器
+      raycaster.setFromCamera(mouse, this.camera)
+      // 计算射线与场景中物体的相交情况
+      const intersects = raycaster.intersectObjects(this.scene.children, false)
+      if (intersects.length > 0) {
+        const intersection = intersects[0]
+        const intersectedObject = intersection.object
+        const intersectedPoint = intersection.point.clone()
+        const localIntersection = intersection.object.worldToLocal(intersectedPoint)
+        if (secondPoint == null) {
+          secondPoint = this.addPoint([
+            localIntersection.x,
+            localIntersection.y,
+            localIntersection.z
+          ])
+        } else {
+          const geometry = new THREE.BufferGeometry()
+          geometry.setAttribute(
+            'position',
+            new THREE.Float32BufferAttribute(
+              [localIntersection.x, localIntersection.y, localIntersection.z],
+              3
+            )
+          )
+          secondPoint.geometry = geometry
+        }
+        window.addEventListener('pointerdown', (event1) => {
+          if (event1.button === 0) {
+            point = []
+            secondPoint = null
+            window.removeEventListener('mousemove', onMouseMove)
+            window.addEventListener('pointerdown', onMouseDown1, false)
+          }
+        })
+      }
+    }
+    window.addEventListener('mousemove', onMouseMove, false)
+    // window.addEventListener('pointerdown', onMouseDown1, false)
   }
 }
