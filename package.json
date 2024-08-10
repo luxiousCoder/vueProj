@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "gen":"python ./autoExport.py",
+    "gen": "python ./autoExport.py",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
@@ -14,6 +14,7 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "dat.gui": "^0.7.9",
     "element-plus": "^2.6.3",
     "pinia": "^2.1.7",
     "sass": "^1.77.4",

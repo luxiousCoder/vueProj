@@ -1,86 +1,17 @@
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { ref } from 'vue'
-import { GUI } from 'dat.gui'
 
-export class threeScene {
+export class threePlot {
   canvas: HTMLElement | null
   scene: THREE.Scene
   camera: THREE.Camera
   renderer: THREE.WebGLRenderer
   entitiesCanBePicked: any = []
   pickedText: any = ''
-  constructor(canvasId: string) {
-    this.pickedText = ''
+  constructor(canvasId: string, scene, camera, renderer) {
     this.canvas = document.getElementById(canvasId)
-    // 创建3D场景对象Scene
-    this.scene = new THREE.Scene()
-    this.camera = new THREE.PerspectiveCamera(
-      45,
-      this.canvas.clientWidth / this.canvas.clientHeight,
-      1,
-      1000
-    )
-    this.camera.position.z = 120
-    // // 定义threejs输出画布的尺寸(单位:像素px)
-    // const width = this.canvas.clientWidth
-    // const height = this.canvas.clientHeight
-    // const aspect = width / height
-    // // 定义相机视景体边界
-    // const frustumSize = 80
-    // const halfFrustumWidth = (frustumSize * aspect) / 2
-    // const halfFrustumHeight = frustumSize / 2
-    // // 创建场景、相机和渲染器
-    // this.camera = new THREE.OrthographicCamera(
-    //   -halfFrustumWidth,
-    //   halfFrustumWidth, // left, right
-    //   halfFrustumHeight,
-    //   -halfFrustumHeight, // top, bottom
-    //   0.1,
-    //   1000 // near, far
-    // )
-    // this.camera.position.set(0, 0, 10)
-    // this.camera.lookAt(0, 0, 10)
-    this.renderer = new THREE.WebGLRenderer({
-      canvas: this.canvas, //渲染结果输出画布：canvas
-      antialias: true,
-      allowTaint: true,
-      preserveDrawingBuffer: true,
-      alpha: true // 是否可以设置背景色透明
-    })
-    this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight) //设置three.js渲染区域的尺寸(像素px)
-    this.renderer.setClearColor(0x155155, 0.1)
-    const controls = new OrbitControls(this.camera, this.renderer.domElement)
-    controls.enabled = true
-    const axesHelper = new THREE.AxesHelper(5)
-    this.scene.add(axesHelper)
-    this.animate()
-  }
-
-  /**
-   * three动画
-   */
-  animate = () => {
-    requestAnimationFrame(this.animate)
-    this.renderer.render(this.scene, this.camera)
-  }
-
-  /**
-   * 窗口大小改变时重置相机与渲染器
-   */
-  resizeChange = () => {
-    const width = this.canvas.clientWidth
-    const height = this.canvas.clientHeight
-    const aspectRatio = width / height
-    const frustumSize = 47
-    const halfFrustumWidth = (frustumSize * aspectRatio) / 2
-    const halfFrustumHeight = frustumSize / 2
-    // 更新相机的左、右、上、下平面
-    this.camera.left = -halfFrustumWidth
-    this.camera.right = halfFrustumWidth
-    this.camera.top = halfFrustumHeight
-    this.camera.bottom = -halfFrustumHeight
-    this.renderer.setSize(width, height)
+    this.scene = scene
+    this.camera = camera
+    this.renderer = renderer
   }
 
   /**
@@ -124,7 +55,6 @@ export class threeScene {
     const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000 })
     const lineSegments = new THREE.LineSegments(edges, lineMaterial)
     this.scene.add(lineSegments)
-    return cube
     // this.entitiesCanBePicked.push(cube)
   }
 
@@ -197,8 +127,7 @@ export class threeScene {
     curveGroup.add(ellipse)
     curveGroup.add(ellipseLine)
     this.scene.add(curveGroup)
-    this.entitiesCanBePicked.push(ellipse, ellipseLine)
-    return curveGroup
+    return ellipse
   }
 
   /**
@@ -355,7 +284,7 @@ export class threeScene {
     if (intersects.length > 0) {
       const intersection = intersects[0]
       const intersectedPoint = intersection.point.clone()
-      localIntersection = intersectedPoint
+      localIntersection = intersection.object.worldToLocal(intersectedPoint)
     }
     return localIntersection
   }
@@ -376,17 +305,9 @@ export class threeScene {
     let plane: any
     let point11: any
     let point21: any
-    // const box = this.addBox()
     const curve = this.addEllipseCurve(20, 20)
-    curve.add(new THREE.AxesHelper(5))
-    const gui = new GUI()
-    const cubeFolder = gui.addFolder('Cube')
-    cubeFolder.add(curve.rotation, 'x', 0, Math.PI * 2).name('Rotation X')
-    cubeFolder.add(curve.rotation, 'y', 0, Math.PI * 2).name('Rotation Y')
-    // curve.rotateY(Math.PI * 0.25)
-    // curve.updateMatrixWorld(true)
-    // const box2 = box.rotateY(Math.PI * 0.25)
-    // this.entitiesCanBePicked.push(box2)
+    this.entitiesCanBePicked.push(curve)
+
     const onMouseDown = (event) => {
       if (event.button === 0) {
         const localIntersection = this.convertPos(event.clientX, event.clientY)

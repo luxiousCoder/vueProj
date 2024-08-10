@@ -13,9 +13,9 @@ onMounted(() => {
   <div class="container">
     <div class="control">
       <button @click="globalScene?.addBox()">addBox</button>
-      <button @click="globalScene?.addPickListener()">addPickListener</button>
-      <button @click="globalScene?.addEllipseCurve(20, 20)">addEllipseCurve</button>
-      <button @click="globalScene?.removePickListener()">removePickListener</button>
+      <button @click="globalScene?.plot()">addPickListener</button>
+      <button @click="globalScene?.addPlaneGeometry('12')">addPlaneGeometry</button>
+      <button @click="globalScene?.plot()">removePickListener</button>
       <button @click="globalScene?.plot">plot</button>
     </div>
     <div class="canvasField">
