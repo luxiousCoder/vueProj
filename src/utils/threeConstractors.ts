@@ -53,7 +53,7 @@ export class threeScene {
     const controls = new OrbitControls(this.camera, this.renderer.domElement)
     controls.enabled = true
     const axesHelper = new THREE.AxesHelper(5)
-    this.scene.add(axesHelper)
+    // this.scene.add(axesHelper)
     this.animate()
   }
 
@@ -174,8 +174,8 @@ export class threeScene {
       xRadius,
       yRadius, // xRadius, yRadius
       0,
-      2 * Math.PI, // aStartAngle, aEndAngle
-      false, // aClockwise
+      0, // aStartAngle, aEndAngle
+      true, // aClockwise
       0 // aRotation
     )
     // 将 EllipseCurve 转换为 Shape
@@ -184,7 +184,7 @@ export class threeScene {
     // 创建 ShapeGeometry 并填充颜色
     const EllipseCurveShape = new THREE.ShapeGeometry(shape)
     const EllipseCurvematerial = new THREE.MeshBasicMaterial({
-      color: 0x00ff00,
+      color: 0xffdead,
       side: THREE.DoubleSide
     })
     const EllipseCurveLine = new THREE.BufferGeometry().setFromPoints(curve.getPoints(64))
@@ -239,7 +239,7 @@ export class threeScene {
 
     // 计算中心点
     const center = new THREE.Vector3()
-    points.forEach((point) => center.add(point))
+    points.forEach((point: any) => center.add(point))
     center.divideScalar(points.length)
 
     // 根据角度排序
@@ -292,11 +292,6 @@ export class threeScene {
 
     // // 将平面添加到场景中
     // this.scene.add(plane)
-
-    // this.addLine([points[0], points[1]])
-    // this.addLine([points[0], points[3]])
-    // this.addLine([points[2], points[1]])
-    // this.addLine([points[2], points[3]])
   }
 
   updatePlaneGeometry = (lineSegments: THREE.LineSegments, points: any) => {
@@ -360,6 +355,11 @@ export class threeScene {
     return localIntersection
   }
 
+  worldToLocal = (point: THREE.Vector3, plane: THREE.Object3D) => {
+    const pointLocal = plane.worldToLocal(point)
+    return pointLocal
+  }
+
   addLine = (points: any) => {
     const geometry = new THREE.BufferGeometry().setFromPoints(points)
     const material = new THREE.LineBasicMaterial({ color: 0x155155 })
@@ -376,18 +376,36 @@ export class threeScene {
     let plane: any
     let point11: any
     let point21: any
-    // const box = this.addBox()
+    // const box = this.addBox()  this.addPoint([this.worldToLocal(new THREE.Vector3(0, 10, 10), curve)])
     const curve = this.addEllipseCurve(20, 20)
+    const testp = this.addPoint([new THREE.Vector3(0, 10, 10)])
+    // curve.add(testp)
     curve.add(new THREE.AxesHelper(5))
     const gui = new GUI()
     const cubeFolder = gui.addFolder('Cube')
-    cubeFolder.add(curve.rotation, 'x', 0, Math.PI * 2).name('Rotation X')
-    cubeFolder.add(curve.rotation, 'y', 0, Math.PI * 2).name('Rotation Y')
-    // curve.rotateY(Math.PI * 0.25)
-    // curve.updateMatrixWorld(true)
-    // const box2 = box.rotateY(Math.PI * 0.25)
-    // this.entitiesCanBePicked.push(box2)
-    const onMouseDown = (event) => {
+    let rotate = {
+      x:0,
+      y:0
+    }
+    cubeFolder
+      .add(curve.rotation, 'x', 0, Math.PI * 2)
+      .name('Rotation X')
+      .onChange((value: any) => {
+        testp.geometry = new THREE.BufferGeometry().setFromPoints([
+          this.worldToLocal(new THREE.Vector3(0, 10, 10), curve)
+        ])
+        console.log(this.worldToLocal(new THREE.Vector3(0, 10, 10), curve));
+        
+      })
+    cubeFolder
+      .add(curve.rotation, 'y', 0, Math.PI * 2)
+      .name('Rotation Y')
+      .onChange((value: any) => {
+        testp.geometry = new THREE.BufferGeometry().setFromPoints([
+          this.worldToLocal(new THREE.Vector3(0, 10, 10), curve)
+        ])
+      })
+    const onMouseDown = (event: any) => {
       if (event.button === 0) {
         const localIntersection = this.convertPos(event.clientX, event.clientY)
         if (localIntersection != null) {
@@ -399,7 +417,7 @@ export class threeScene {
       }
     }
 
-    const onMouseMove = (event) => {
+    const onMouseMove = (event: any) => {
       window.removeEventListener('pointerdown', onMouseDown)
       const localIntersection = this.convertPos(event.clientX, event.clientY)
       if (localIntersection != null) {
@@ -407,13 +425,19 @@ export class threeScene {
         const point2 = this.convertPos(event.clientX, startScreenPoint[1])
         if (endPoint == null) {
           endPoint = this.addPoint([localIntersection])
+          const local1 = this.worldToLocal(localIntersection, curve)
+          const local2 = this.worldToLocal(startPoint[0], curve)
           // line = this.addLine([localIntersection, startPoint[0]])
           if (point1 != null && point2 != null) {
-            plane = this.addPlaneGeometry([localIntersection, point1, startPoint[0], point2])
-            // point11 = this.addPoint([point1])
-            // point21 = this.addPoint([point2])
-            // this.addPlaneGeometry([localIntersection, point1, startPoint[0], point2])
-            // plane = this.addPlaneGeometry([startPoint, point1, point2, localIntersection])
+            const pointtestLocal = new THREE.Vector3(local1.x, local2.y, local1.z)
+            const pointtestLocal2 = new THREE.Vector3(local2.x, local1.y, local2.z)
+            // plane = this.addPlaneGeometry([localIntersection, point1, startPoint[0], point2])
+            plane = this.addPlaneGeometry([
+              localIntersection,
+              pointtestLocal,
+              startPoint[0],
+              pointtestLocal2
+            ])
           }
         } else {
           // line.geometry = new THREE.BufferGeometry().setFromPoints([
@@ -422,9 +446,20 @@ export class threeScene {
           // ])
           endPoint.geometry = new THREE.BufferGeometry().setFromPoints([localIntersection])
           if (point1 != null && point2 != null) {
-            // point11.geometry = new THREE.BufferGeometry().setFromPoints([point1])
-            // point21.geometry = new THREE.BufferGeometry().setFromPoints([point2])
-            this.updatePlaneGeometry(plane, [localIntersection, point1, startPoint[0], point2])
+            const pointtestLocal = new THREE.Vector3(
+              localIntersection.x,
+              startPoint[0].y,
+              localIntersection.z
+            )
+            const pointtestLocal2 = new THREE.Vector3(
+              startPoint[0].x,
+              localIntersection.y,
+              startPoint[0].z
+            )
+            const local1 = this.worldToLocal(pointtestLocal, curve)
+            const local2 = this.worldToLocal(pointtestLocal2, curve)
+            this.updatePlaneGeometry(plane, [localIntersection, local1, startPoint[0], local2])
+            // this.updatePlaneGeometry(plane, [localIntersection, point1, startPoint[0], point2])
           }
         }
         window.addEventListener(
