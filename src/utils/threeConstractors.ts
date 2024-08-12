@@ -86,7 +86,8 @@ export class threeScene {
 
   /**
    * 添加三角形
-   * @param vertexPos 三角形底边顶点坐标
+   * @param vertexPos
+   * @returns triangle 三角形组
    */
   addTriangle = (vertexPos: any) => {
     // 添加三角形
@@ -100,8 +101,8 @@ export class threeScene {
       'position',
       new THREE.BufferAttribute(new Float32Array(vertices), 3)
     )
-    const material1 = new THREE.MeshBasicMaterial({ color: 0x8300b5 })
-    const triangleMesh = new THREE.Mesh(triangleGeometry, material1)
+    const triangleMeshMaterial = new THREE.MeshBasicMaterial({ color: 0x8300b5 })
+    const triangleMesh = new THREE.Mesh(triangleGeometry, triangleMeshMaterial)
     triangleMesh.name = 'triangleMesh'
     triangle.add(triangleMesh)
     //添加描边线
@@ -114,8 +115,13 @@ export class threeScene {
     coneLine.name = 'coneLine'
     triangle.add(coneLine)
     this.scene.add(triangle)
+    return triangle
   }
 
+  /**
+   * 添加简单长方体及边框
+   * @returns 长方体对象
+   */
   addBox = () => {
     const geometry = new THREE.BoxGeometry(10, 10, 10, 20, 1, 1)
     const material = new THREE.MeshBasicMaterial({ color: 0xff0000 })
@@ -129,6 +135,11 @@ export class threeScene {
     // this.entitiesCanBePicked.push(cube)
   }
 
+  /**
+   * 添加点
+   * @param vertices 点的坐标向量组成的数组 eg.[Vector3,Vector3 ...]
+   * @returns 点对象THREE.Points
+   */
   addPoint = (vertices: any) => {
     const geometry = new THREE.BufferGeometry().setFromPoints(vertices)
     // geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
@@ -292,6 +303,11 @@ export class threeScene {
     // this.scene.add(plane)
   }
 
+  /**
+   * 更新平面
+   * @param lineSegments
+   * @param points
+   */
   updatePlaneGeometry = (lineSegments: THREE.LineSegments, points: any) => {
     // 计算中心点
     const center = new THREE.Vector3()
