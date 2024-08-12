@@ -2,7 +2,8 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { ref } from 'vue'
 import { GUI } from 'dat.gui'
-
+import { addEmitHelper } from 'typescript'
+import helvetiker_regulartypeface from 'three/examples/fonts/helvetiker_regular.typeface.json'
 export class threeScene {
   canvas: HTMLElement | null
   scene: THREE.Scene
@@ -228,15 +229,12 @@ export class threeScene {
     ellipseLine.geometry = new THREE.BufferGeometry().setFromPoints(curve.getPoints(64))
   }
 
+  /**
+   * 绘制三维四边形面
+   * @param points 四边形四个顶点数组[Vetor3,Vetor3 ...]
+   * @returns
+   */
   addPlaneGeometry = (points: any) => {
-    //四个点的坐标（假设是共面的）
-    // const points = [
-    //   new THREE.Vector3(-1.0, -1.0, 0.0), // Point 1
-    //   new THREE.Vector3(1.0, -1.0, 0.0), // Point 2
-    //   new THREE.Vector3(1.5, 1.0, 0.0), // Point 3
-    //   new THREE.Vector3(-1.5, 1.0, 0.0) // Point 4
-    // ]
-
     // 计算中心点
     const center = new THREE.Vector3()
     points.forEach((point: any) => center.add(point))
@@ -264,7 +262,7 @@ export class threeScene {
       points[3].y,
       points[3].z
     ])
-    // const vertices = new Float32Array([verticesInput])
+    // const vertices = new Float32Array(points)
     // 定义顶点的索引 (两个三角形)
     const indices = new Uint16Array([
       0,
@@ -320,7 +318,7 @@ export class threeScene {
       points[3].y,
       points[3].z
     ])
-    // const vertices = new Float32Array([verticesInput])
+    // const vertices = new Float32Array([points[0], points[1], points[2]])
     // 定义顶点的索引 (两个三角形)
     const indices = new Uint16Array([
       0,
@@ -368,12 +366,122 @@ export class threeScene {
     return line
   }
 
+  addArrow = (start: any, end: any) => {
+    // 计算方向向量
+    const direction = new THREE.Vector3().subVectors(end, start).normalize()
+
+    // 计算箭头长度
+    const length = start.distanceTo(end)
+
+    // 定义箭头的颜色
+    const color = 0x00ff00 // 绿色
+
+    // 创建箭头帮助器
+    const arrowHelper = new THREE.ArrowHelper(direction, start, length, color)
+
+    // 将箭头添加到场景中
+    this.scene.add(arrowHelper)
+
+    return arrowHelper
+  }
+
+  updateArrow = (arrowHelper: THREE.ArrowHelper, start: any, end: any) => {
+    // 计算方向向量
+    const direction = new THREE.Vector3().subVectors(end, start).normalize()
+
+    // 计算箭头长度
+    const length = start.distanceTo(end)
+
+    // 定义箭头的颜色
+    const color = 0x00ff00 // 绿色
+
+    arrowHelper.setDirection(direction)
+    arrowHelper.setLength(length)
+  }
+
+  updateGroupGeometry = (mesh: any, geometry: any) => {
+    if (geometry.isGeometry) {
+      geometry = new THREE.BufferGeometry().fromGeometry(geometry)
+    }
+    console.log(mesh.children)
+
+    mesh.geometry.dispose()
+
+    mesh.geometry = new THREE.WireframeGeometry(geometry)
+    mesh.geometry = geometry
+
+    // these do not update nicely together if shared
+  }
+
+  loadFont = () => {
+    return new Promise((resolve, reject) => {
+      const loader = new THREE.FontLoader()
+      loader.load('../src/assets/font/helvetiker_regular.typeface.json', resolve, undefined, reject)
+    })
+  }
+
+  addText = async (pointA: any, pointB: any, mesh: THREE.Object3D) => {
+    // 0.121.1
+    // const pa = mesh.worldToLocal
+    const direction = new THREE.Vector3().subVectors(pointB, pointA).normalize()
+    const distance = pointA.distanceTo(pointB)
+    const midpoint = new THREE.Vector3().addVectors(pointB, pointA).multiplyScalar(0.5)
+    const font = await this.loadFont()
+    var geometry = new THREE.TextGeometry(distance.toString() + 'mm', {
+      font: font,
+      size: distance / 30, // 根据点之间的距离调整字体大小
+      height: 0.2,
+      curveSegments: 12,
+      bevelEnabled: true,
+      bevelThickness: 0.1,
+      bevelSize: 0.05,
+      bevelSegments: 3
+    })
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 })
+    const textMesh = new THREE.Mesh(geometry, material)
+    textMesh.position.copy(midpoint)
+    // const pos1 = pointA.clone().add(direction.multiplyScalar(distance / 4))
+    // textMesh.position.copy(pointA.clone().add(direction.multiplyScalar(distance / 2)))
+    const up = new THREE.Vector3(1, 0, 0) // 文本的向上方向
+    const quaternion = new THREE.Quaternion().setFromUnitVectors(up, direction)
+    textMesh.setRotationFromQuaternion(quaternion)
+    textMesh.geometry.center()
+    this.scene.add(textMesh)
+    return textMesh
+  }
+
+  updateText = (textMesh: THREE.Mesh, pointA: any, pointB: any) => {
+    const direction = new THREE.Vector3().subVectors(pointB, pointA).normalize()
+    const distance = pointA.distanceTo(pointB)
+    // postion && textMesh.position.set(5, 0, 0)
+    const loader = new THREE.FontLoader()
+    const updateGroupGeometry = this.updateGroupGeometry
+    loader.load('../src/assets/font/helvetiker_regular.typeface.json', function (font) {
+      var geometry = new THREE.TextGeometry('Hello three', {
+        font: font,
+        size: 80,
+        height: 5,
+        curveSegments: 12,
+        bevelEnabled: true,
+        bevelThickness: 10,
+        bevelSize: 8,
+        bevelOffset: 0,
+        bevelSegments: 5
+      })
+      geometry.center()
+
+      updateGroupGeometry(textMesh, geometry)
+    })
+  }
+
   plot = () => {
     let startScreenPoint: any = []
     let startPoint: any = []
     let endPoint: any
     let line: any
     let plane: any
+    let arrow: any
+    let text: any
     let point11: any
     let point21: any
     // const box = this.addBox()  this.addPoint([this.worldToLocal(new THREE.Vector3(0, 10, 10), curve)])
@@ -383,10 +491,6 @@ export class threeScene {
     curve.add(new THREE.AxesHelper(5))
     const gui = new GUI()
     const cubeFolder = gui.addFolder('Cube')
-    let rotate = {
-      x:0,
-      y:0
-    }
     cubeFolder
       .add(curve.rotation, 'x', 0, Math.PI * 2)
       .name('Rotation X')
@@ -394,8 +498,7 @@ export class threeScene {
         testp.geometry = new THREE.BufferGeometry().setFromPoints([
           this.worldToLocal(new THREE.Vector3(0, 10, 10), curve)
         ])
-        console.log(this.worldToLocal(new THREE.Vector3(0, 10, 10), curve));
-        
+        console.log(this.worldToLocal(new THREE.Vector3(0, 10, 10), curve))
       })
     cubeFolder
       .add(curve.rotation, 'y', 0, Math.PI * 2)
@@ -412,12 +515,17 @@ export class threeScene {
           startPoint.push(localIntersection)
           startScreenPoint = [event.clientX, event.clientY]
           this.addPoint([localIntersection])
+          console.log(startPoint[0])
+
           window.addEventListener('mousemove', onMouseMove)
+          console.log('onMouseDownadd!')
         }
       }
     }
 
-    const onMouseMove = (event: any) => {
+    let isEventListenerAdd = false
+
+    const onMouseMove = async (event: any) => {
       window.removeEventListener('pointerdown', onMouseDown)
       const localIntersection = this.convertPos(event.clientX, event.clientY)
       if (localIntersection != null) {
@@ -427,7 +535,10 @@ export class threeScene {
           endPoint = this.addPoint([localIntersection])
           const local1 = this.worldToLocal(localIntersection, curve)
           const local2 = this.worldToLocal(startPoint[0], curve)
-          // line = this.addLine([localIntersection, startPoint[0]])
+          line = this.addLine([localIntersection, startPoint[0]])
+          arrow = this.addArrow(localIntersection, startPoint[0])
+          // text = await this.addText()
+          // line.add(text)
           if (point1 != null && point2 != null) {
             const pointtestLocal = new THREE.Vector3(local1.x, local2.y, local1.z)
             const pointtestLocal2 = new THREE.Vector3(local2.x, local1.y, local2.z)
@@ -440,11 +551,12 @@ export class threeScene {
             ])
           }
         } else {
-          // line.geometry = new THREE.BufferGeometry().setFromPoints([
-          //   localIntersection,
-          //   startPoint[0]
-          // ])
+          line.geometry = new THREE.BufferGeometry().setFromPoints([
+            localIntersection,
+            startPoint[0]
+          ])
           endPoint.geometry = new THREE.BufferGeometry().setFromPoints([localIntersection])
+          this.updateArrow(arrow, startPoint[0], localIntersection)
           if (point1 != null && point2 != null) {
             const pointtestLocal = new THREE.Vector3(
               localIntersection.x,
@@ -459,30 +571,39 @@ export class threeScene {
             const local1 = this.worldToLocal(pointtestLocal, curve)
             const local2 = this.worldToLocal(pointtestLocal2, curve)
             this.updatePlaneGeometry(plane, [localIntersection, local1, startPoint[0], local2])
+
             // this.updatePlaneGeometry(plane, [localIntersection, point1, startPoint[0], point2])
           }
+          if (!isEventListenerAdd) {
+            // add = addOnce(localIntersection)
+            window.addEventListener(
+              'pointerdown',
+              async (event1) => {
+                if (event1.button === 0) {
+                  const localIntersection = this.convertPos(event1.clientX, event1.clientY)
+                  text = await this.addText(startPoint[0], localIntersection, curve)
+                  console.log(text)
+                  startPoint = []
+                  endPoint = null
+                  window.removeEventListener('mousemove', onMouseMove)
+                  window.addEventListener('pointerdown', onMouseDown)
+                  isEventListenerAdd = false
+                }
+                if (event1.button === 2) {
+                  startPoint = []
+                  endPoint = null
+                  window.removeEventListener('mousemove', onMouseMove)
+                  // window.addEventListener('pointerdown', onMouseDown, false)
+                }
+              },
+              { once: true }
+            )
+            isEventListenerAdd = true
+          }
         }
-        window.addEventListener(
-          'pointerdown',
-          (event1) => {
-            if (event1.button === 0) {
-              startPoint = []
-              endPoint = null
-              window.removeEventListener('mousemove', onMouseMove)
-              window.addEventListener('pointerdown', onMouseDown, false)
-            }
-            if (event1.button === 2) {
-              startPoint = []
-              endPoint = null
-              window.removeEventListener('mousemove', onMouseMove)
-              // window.addEventListener('pointerdown', onMouseDown, false)
-            }
-          },
-          { once: true }
-        )
       }
     }
     // window.addEventListener('mousemove', onMouseMove, false)
-    window.addEventListener('pointerdown', onMouseDown, false)
+    window.addEventListener('pointerdown', onMouseDown)
   }
 }

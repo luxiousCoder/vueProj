@@ -3,6 +3,12 @@ import { onBeforeMount, onMounted, ref, watch, Ref } from 'vue'
 import { threeScene } from '@/utils/index'
 
 let globalScene: Ref<threeScene | null> = ref(null)
+let text: any
+
+const genText = async () => {
+  text = await globalScene.value.createText()
+  console.log(text)
+}
 
 onMounted(() => {
   globalScene.value = new threeScene('canvas')
@@ -15,8 +21,9 @@ onMounted(() => {
       <button @click="globalScene?.addBox()">addBox</button>
       <button @click="globalScene?.plot()">addPickListener</button>
       <button @click="globalScene?.addPlaneGeometry('12')">addPlaneGeometry</button>
-      <button @click="globalScene?.plot()">removePickListener</button>
-      <button @click="globalScene?.plot">plot</button>
+      <button @click="globalScene?.plot()">plot</button>
+      <button @click="genText">createText</button>
+      <button @click="globalScene?.updateText(text)">updateText</button>
     </div>
     <div class="canvasField">
       <canvas id="canvas" class="drawCanvas"> </canvas>
