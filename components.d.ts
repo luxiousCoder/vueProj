@@ -8,8 +8,10 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     DraggableCompounent: typeof import('./src/components/draggableCompounent.vue')['default']
+    ElOption: typeof import('element-plus/es')['ElOption']
+    ElSelect: typeof import('element-plus/es')['ElSelect']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
-    SliderBar: typeof import('./src/components/sliderBar.vue')['default']
+    SliderBar: typeof import('./src/components/SliderBar.vue')['default']
   }
 }

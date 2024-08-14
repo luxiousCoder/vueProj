@@ -9,8 +9,12 @@ export class threeScene {
   scene: THREE.Scene
   camera: THREE.Camera
   renderer: THREE.WebGLRenderer
+  controls: OrbitControls
   entitiesCanBePicked: any = []
   pickedText: any = ''
+  auxiliaryPlanes: any = null
+  plotType: any = null
+  gui: any = null
   constructor(canvasId: string) {
     this.pickedText = ''
     this.canvas = document.getElementById(canvasId)
@@ -20,9 +24,23 @@ export class threeScene {
       45,
       this.canvas.clientWidth / this.canvas.clientHeight,
       1,
-      1000
+      100000000000000
     )
-    this.camera.position.z = 120
+    this.camera.position.set(0, 0, 600)
+    // const width = 1000
+    // const height = 1000
+    // this.camera = new THREE.OrthographicCamera(
+    //   width / -2,
+    //   width / 2,
+    //   height / 2,
+    //   height / -2,
+    //   1,
+    //   1000
+    // )
+    // this.camera.position.set(0, 0, 20)
+    // const cameraHelper = new THREE.CameraHelper(this.camera)
+    // this.scene.add(cameraHelper)
+
     // // 定义threejs输出画布的尺寸(单位:像素px)
     // const width = this.canvas.clientWidth
     // const height = this.canvas.clientHeight
@@ -51,11 +69,34 @@ export class threeScene {
     })
     this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight) //设置three.js渲染区域的尺寸(像素px)
     this.renderer.setClearColor(0x155155, 0.1)
-    const controls = new OrbitControls(this.camera, this.renderer.domElement)
-    controls.enabled = true
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement)
+    this.controls.enabled = true
+    this.camera.lookAt(10, 10, 10)
+
     const axesHelper = new THREE.AxesHelper(5)
-    // this.scene.add(axesHelper)
+    this.scene.add(axesHelper)
     this.animate()
+  }
+
+  generateAuxiliaryPlanes = () => {
+    const result = new THREE.Vector3()
+    const ocPos = this.camera.position
+    const c = new THREE.Vector3()
+    this.camera.getWorldDirection(c)
+    const dotRes = -(c.dot(ocPos) / c.dot(c))
+    result.copy(ocPos.clone().add(c.clone().multiplyScalar(dotRes)))
+    // 创建平面几何体
+    const geometry = new THREE.PlaneGeometry(50, 50) // 平面的宽和高都是 5
+    const material = new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide }) // 创建一个绿色的材质，双面显示
+    let plane = new THREE.Mesh(geometry, material) // 创建平面网格
+    this.scene.add(plane) // 将平面添加到场景中
+    plane.position.copy(result)
+    plane.lookAt(this.camera.position)
+    const plane2 = new THREE.Plane(result.sub(ocPos).normalize(), 0)
+    var helper = new THREE.PlaneHelper(plane2, 500, 0xffff00)
+    this.scene.add(helper)
+    this.entitiesCanBePicked.push(plane2)
+    return plane
   }
 
   /**
@@ -63,6 +104,7 @@ export class threeScene {
    */
   animate = () => {
     requestAnimationFrame(this.animate)
+    this.controls.update()
     this.renderer.render(this.scene, this.camera)
   }
 
@@ -82,6 +124,21 @@ export class threeScene {
     this.camera.top = halfFrustumHeight
     this.camera.bottom = -halfFrustumHeight
     this.renderer.setSize(width, height)
+  }
+
+  addSphere = (radius: any) => {
+    // 创建球体的几何体 (参数分别是半径, 水平分段数, 垂直分段数)
+    const geometry = new THREE.SphereGeometry(radius, 32, 32)
+
+    // 创建基本材质，设置颜色为红色
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 })
+
+    // 将几何体和材质组合成一个网格
+    const sphere = new THREE.Mesh(geometry, material)
+
+    // 将球体添加到场景中
+    this.scene.add(sphere)
+    return sphere
   }
 
   /**
@@ -305,8 +362,8 @@ export class threeScene {
 
   /**
    * 更新平面
-   * @param lineSegments
-   * @param points
+   * @param lineSegments 要更新的平面对象
+   * @param points 新对象的点坐标
    */
   updatePlaneGeometry = (lineSegments: THREE.LineSegments, points: any) => {
     // 计算中心点
@@ -348,9 +405,16 @@ export class threeScene {
     const geometry = new THREE.BufferGeometry()
     geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
     geometry.setIndex(new THREE.BufferAttribute(indices, 1))
+    lineSegments.geometry.dispose()
     lineSegments.geometry = new THREE.EdgesGeometry(geometry)
   }
 
+  /**
+   * 计算屏幕上的点击的点与场景中物体的相交情况
+   * @param eventclientX 鼠标位置x坐标
+   * @param eventclientY 鼠标位置y坐标
+   * @returns  交点坐标向量Vector3
+   */
   convertPos = (eventclientX: any, eventclientY: any) => {
     let localIntersection: any
     const raycaster = new THREE.Raycaster()
@@ -359,21 +423,29 @@ export class threeScene {
     mouse.x = ((eventclientX - getBoundingClientRect.left) / this.canvas.clientWidth) * 2 - 1
     mouse.y = -((eventclientY - getBoundingClientRect.top) / this.canvas.clientHeight) * 2 + 1
     raycaster.setFromCamera(mouse, this.camera)
-    // 计算射线与场景中物体的相交情况
-    const intersects = raycaster.intersectObjects(this.entitiesCanBePicked, false)
-    if (intersects.length > 0) {
-      const intersection = intersects[0]
-      const intersectedPoint = intersection.point.clone()
-      localIntersection = intersectedPoint
+    // // 计算射线与场景中物体的相交情况
+    // console.log(this.entitiesCanBePicked)
+    const intersects = new THREE.Vector3()
+    raycaster.ray.intersectPlane(this.entitiesCanBePicked[0], intersects)
+    // console.log(intersects)
+    // this.addPoint([intersects])
+    if (intersects) {
+      // console.log(intersects.length)
+      // const intersection = intersects[0]
+      localIntersection = intersects
+      // const vec1 = new THREE.Vector3()
+      // this.entitiesCanBePicked[0].projectPoint(localIntersection, vec1)
+      // this.addPoint([vec1])
+      // // localIntersection = intersectedPoint
     }
     return localIntersection
   }
 
-  worldToLocal = (point: THREE.Vector3, plane: THREE.Object3D) => {
-    const pointLocal = plane.worldToLocal(point)
-    return pointLocal
-  }
-
+  /**
+   * 绘制线
+   * @param points 线上的端点
+   * @returns 线对象THREE.Line
+   */
   addLine = (points: any) => {
     const geometry = new THREE.BufferGeometry().setFromPoints(points)
     const material = new THREE.LineBasicMaterial({ color: 0x155155 })
@@ -382,6 +454,12 @@ export class threeScene {
     return line
   }
 
+  /**
+   * 绘制箭头
+   * @param start 箭头起点坐标向量
+   * @param end 箭头终点坐标向量
+   * @returns THREE.ArrowHelper
+   */
   addArrow = (start: any, end: any) => {
     // 计算方向向量
     const direction = new THREE.Vector3().subVectors(end, start).normalize()
@@ -401,6 +479,12 @@ export class threeScene {
     return arrowHelper
   }
 
+  /**
+   * 更新箭头位置
+   * @param arrowHelper 箭头对象
+   * @param start 箭头起点
+   * @param end 箭头终点
+   */
   updateArrow = (arrowHelper: THREE.ArrowHelper, start: any, end: any) => {
     // 计算方向向量
     const direction = new THREE.Vector3().subVectors(end, start).normalize()
@@ -415,20 +499,24 @@ export class threeScene {
     arrowHelper.setLength(length)
   }
 
+  /**
+   * 更新mesh的几何通用方法
+   * @param mesh 要更新的mesh对象
+   * @param geometry 更新的几何
+   */
   updateGroupGeometry = (mesh: any, geometry: any) => {
     if (geometry.isGeometry) {
       geometry = new THREE.BufferGeometry().fromGeometry(geometry)
     }
-    console.log(mesh.children)
-
     mesh.geometry.dispose()
-
     mesh.geometry = new THREE.WireframeGeometry(geometry)
     mesh.geometry = geometry
-
-    // these do not update nicely together if shared
   }
 
+  /**
+   * 加载字体方法
+   * @returns Promise对象，resolve值为加载的字体
+   */
   loadFont = () => {
     return new Promise((resolve, reject) => {
       const loader = new THREE.FontLoader()
@@ -436,9 +524,14 @@ export class threeScene {
     })
   }
 
-  addText = async (pointA: any, pointB: any, mesh: THREE.Object3D) => {
+  /**
+   * 文字的绘制
+   * @param pointA 绘制起点
+   * @param pointB 绘制终点
+   * @returns 绘制的文字对象THREE.Mesh
+   */
+  addText = async (pointA: any, pointB: any) => {
     // 0.121.1
-    // const pa = mesh.worldToLocal
     const direction = new THREE.Vector3().subVectors(pointB, pointA).normalize()
     const distance = pointA.distanceTo(pointB)
     const midpoint = new THREE.Vector3().addVectors(pointB, pointA).multiplyScalar(0.5)
@@ -466,6 +559,12 @@ export class threeScene {
     return textMesh
   }
 
+  /**
+   * 更新文字位置
+   * @param textMesh 需要更新的文字对象
+   * @param pointA 绘制起点
+   * @param pointB 绘制终点
+   */
   updateText = (textMesh: THREE.Mesh, pointA: any, pointB: any) => {
     const direction = new THREE.Vector3().subVectors(pointB, pointA).normalize()
     const distance = pointA.distanceTo(pointB)
@@ -490,136 +589,227 @@ export class threeScene {
     })
   }
 
-  plot = () => {
-    let startScreenPoint: any = []
-    let startPoint: any = []
-    let endPoint: any
-    let line: any
-    let plane: any
-    let arrow: any
-    let text: any
-    let point11: any
-    let point21: any
-    // const box = this.addBox()  this.addPoint([this.worldToLocal(new THREE.Vector3(0, 10, 10), curve)])
-    const curve = this.addEllipseCurve(20, 20)
-    const testp = this.addPoint([new THREE.Vector3(0, 10, 10)])
-    // curve.add(testp)
-    curve.add(new THREE.AxesHelper(5))
-    const gui = new GUI()
-    const cubeFolder = gui.addFolder('Cube')
-    cubeFolder
-      .add(curve.rotation, 'x', 0, Math.PI * 2)
-      .name('Rotation X')
-      .onChange((value: any) => {
-        testp.geometry = new THREE.BufferGeometry().setFromPoints([
-          this.worldToLocal(new THREE.Vector3(0, 10, 10), curve)
-        ])
-        console.log(this.worldToLocal(new THREE.Vector3(0, 10, 10), curve))
-      })
-    cubeFolder
-      .add(curve.rotation, 'y', 0, Math.PI * 2)
-      .name('Rotation Y')
-      .onChange((value: any) => {
-        testp.geometry = new THREE.BufferGeometry().setFromPoints([
-          this.worldToLocal(new THREE.Vector3(0, 10, 10), curve)
-        ])
-      })
+  /**
+   * 标绘方法
+   */
+  plot = (plotType: any) => {
+    let startScreenPoint: any = [] //用于存储绘制屏幕起点
+    let startPoint: any = [] //用于存储绘制起点
+    let drawObjects: any
+    this.plotType = plotType
+    // const box = this.addBox()
+    // const testp = this.addPoint([new THREE.Vector3(0, 10, 10)])
+    if (this.auxiliaryPlanes == null) {
+      this.auxiliaryPlanes = this.generateAuxiliaryPlanes()
+
+      // this.auxiliaryPlanes = this.addEllipseCurve(20, 20) //绘制平面的添加
+      // this.auxiliaryPlanes.add(new THREE.AxesHelper(5)) //辅助坐标系的添加
+      // this.auxiliaryPlanes.lookAt(this.camera.position)
+      // console.log(this.auxiliaryPlanes.rotation)
+      // const test = {
+      //   a: 0
+      // }
+      // this.gui = new GUI() //GUI调试窗口添加
+      // const cubeFolder = this.gui.addFolder('Cube')
+      // cubeFolder.add(this.auxiliaryPlanes.rotation, 'x', 0, Math.PI * 2).name('Rotation X')
+      // // .onChange((value: any) => {
+      // //   testp.geometry = new THREE.BufferGeometry().setFromPoints([
+      // //     auxiliaryPlanes.worldToLocal(new THREE.Vector3(0, 10, 10))
+      // //   ])
+      // // })
+      // cubeFolder.add(this.auxiliaryPlanes.rotation, 'y', 0, Math.PI * 2).name('Rotation Y')
+      // // .onChange((value: any) => {
+      // //   testp.geometry = new THREE.BufferGeometry().setFromPoints([
+      // //     auxiliaryPlanes.worldToLocal(new THREE.Vector3(0, 10, 10))
+      // //   ])
+      // // })
+      // cubeFolder.add(this.auxiliaryPlanes.rotation, 'z', 0, Math.PI * 2).name('Rotation Z')
+      // cubeFolder
+      //   .add(test, 'a', -100, 200)
+      //   .name('Rotation c')
+      //   .onChange((value: any) => {
+      //     const dir = new THREE.Vector3()
+      //     this.entitiesCanBePicked[0].getWorldDirection(dir)
+      //     // dis向量表示相机沿着相机视线方向平移200的位移量
+      //     const dis = dir.clone().multiplyScalar(value)
+      //     // 相机沿着视线方向平移
+      //     this.entitiesCanBePicked[0].position.add(dis)
+      //   })
+    }
+
+    //监听左键单击事件
     const onMouseDown = (event: any) => {
       if (event.button === 0) {
+        //计算屏幕上的点击的点与场景中物体的相交情况
         const localIntersection = this.convertPos(event.clientX, event.clientY)
         if (localIntersection != null) {
           startPoint.push(localIntersection)
           startScreenPoint = [event.clientX, event.clientY]
-          this.addPoint([localIntersection])
-          console.log(startPoint[0])
-
+          // this.addPoint([localIntersection]) //绘制起点处添加点
           window.addEventListener('mousemove', onMouseMove)
-          console.log('onMouseDownadd!')
+          // console.log('onMouseDownadd!')
+          // console.log(startPoint[0])
         }
       }
     }
 
+    //用于判断鼠标移动事件中左键单击事件是否被添加，防止鼠标左键单击事件被多次添加
     let isEventListenerAdd = false
 
+    //鼠标移动事件添加
     const onMouseMove = async (event: any) => {
+      //移除初始监听事件避免与后续事件冲突
       window.removeEventListener('pointerdown', onMouseDown)
+      //判断鼠标是否与辅助平面相交
       const localIntersection = this.convertPos(event.clientX, event.clientY)
       if (localIntersection != null) {
-        const point1 = this.convertPos(startScreenPoint[0], event.clientY)
-        const point2 = this.convertPos(event.clientX, startScreenPoint[1])
-        if (endPoint == null) {
-          endPoint = this.addPoint([localIntersection])
-          const local1 = this.worldToLocal(localIntersection, curve)
-          const local2 = this.worldToLocal(startPoint[0], curve)
-          line = this.addLine([localIntersection, startPoint[0]])
-          arrow = this.addArrow(localIntersection, startPoint[0])
-          // text = await this.addText()
-          // line.add(text)
-          if (point1 != null && point2 != null) {
-            const pointtestLocal = new THREE.Vector3(local1.x, local2.y, local1.z)
-            const pointtestLocal2 = new THREE.Vector3(local2.x, local1.y, local2.z)
-            // plane = this.addPlaneGeometry([localIntersection, point1, startPoint[0], point2])
-            plane = this.addPlaneGeometry([
-              localIntersection,
-              pointtestLocal,
-              startPoint[0],
-              pointtestLocal2
-            ])
+        const planePoint1 = this.convertPos(startScreenPoint[0], event.clientY)
+        const planePoint2 = this.convertPos(event.clientX, startScreenPoint[1])
+        if (drawObjects == null) {
+          switch (this.plotType) {
+            case 'point':
+              drawObjects = this.addPoint([localIntersection]) //绘制终点添加点
+              // drawObjects.rotation.clone(this.auxiliaryPlanes.rotation)
+              break
+            case 'line':
+              drawObjects = this.addLine([localIntersection, startPoint[0]])
+              break
+            case 'polylines':
+              drawObjects = this.addLine([localIntersection, startPoint[0]])
+              console.log(drawObjects)
+
+              break
+            case 'arrow':
+              drawObjects = this.addArrow(localIntersection, startPoint[0])
+              break
+            case 'plane':
+              if (planePoint1 != null && planePoint2 != null) {
+                const pointtestLocal = new THREE.Vector3(
+                  localIntersection.x,
+                  startPoint[0].y,
+                  localIntersection.z
+                )
+                const pointtestLocal2 = new THREE.Vector3(
+                  startPoint[0].x,
+                  localIntersection.y,
+                  startPoint[0].z
+                )
+                // plane = this.addPlaneGeometry([localIntersection, point1, startPoint[0], point2])
+                drawObjects = this.addPlaneGeometry([
+                  localIntersection,
+                  pointtestLocal,
+                  startPoint[0],
+                  pointtestLocal2
+                ])
+              }
+              break
+            default:
+              break
           }
         } else {
-          line.geometry = new THREE.BufferGeometry().setFromPoints([
-            localIntersection,
-            startPoint[0]
-          ])
-          endPoint.geometry = new THREE.BufferGeometry().setFromPoints([localIntersection])
-          this.updateArrow(arrow, startPoint[0], localIntersection)
-          if (point1 != null && point2 != null) {
-            const pointtestLocal = new THREE.Vector3(
-              localIntersection.x,
-              startPoint[0].y,
-              localIntersection.z
-            )
-            const pointtestLocal2 = new THREE.Vector3(
-              startPoint[0].x,
-              localIntersection.y,
-              startPoint[0].z
-            )
-            const local1 = this.worldToLocal(pointtestLocal, curve)
-            const local2 = this.worldToLocal(pointtestLocal2, curve)
-            this.updatePlaneGeometry(plane, [localIntersection, local1, startPoint[0], local2])
-
-            // this.updatePlaneGeometry(plane, [localIntersection, point1, startPoint[0], point2])
-          }
-          if (!isEventListenerAdd) {
-            // add = addOnce(localIntersection)
-            window.addEventListener(
-              'pointerdown',
-              async (event1) => {
-                if (event1.button === 0) {
-                  const localIntersection = this.convertPos(event1.clientX, event1.clientY)
-                  text = await this.addText(startPoint[0], localIntersection, curve)
-                  console.log(text)
-                  startPoint = []
-                  endPoint = null
-                  window.removeEventListener('mousemove', onMouseMove)
-                  window.addEventListener('pointerdown', onMouseDown)
-                  isEventListenerAdd = false
-                }
-                if (event1.button === 2) {
-                  startPoint = []
-                  endPoint = null
-                  window.removeEventListener('mousemove', onMouseMove)
-                  // window.addEventListener('pointerdown', onMouseDown, false)
-                }
-              },
-              { once: true }
-            )
-            isEventListenerAdd = true
+          //更新
+          switch (this.plotType) {
+            case 'point':
+              drawObjects.geometry = new THREE.BufferGeometry().setFromPoints([localIntersection])
+              break
+            case 'line':
+              drawObjects.geometry = new THREE.BufferGeometry().setFromPoints([
+                localIntersection,
+                startPoint[0]
+              ])
+              break
+            case 'polylines':
+              drawObjects.geometry = new THREE.BufferGeometry().setFromPoints([
+                localIntersection,
+                startPoint[0]
+              ])
+              break
+            case 'arrow':
+              this.updateArrow(drawObjects, startPoint[0], localIntersection)
+              break
+            case 'plane':
+              if (planePoint1 != null && planePoint2 != null) {
+                const pointtestLocal = new THREE.Vector3(
+                  localIntersection.x,
+                  startPoint[0].y,
+                  localIntersection.z
+                )
+                const pointtestLocal2 = new THREE.Vector3(
+                  startPoint[0].x,
+                  localIntersection.y,
+                  startPoint[0].z
+                )
+                this.updatePlaneGeometry(drawObjects, [
+                  localIntersection,
+                  pointtestLocal,
+                  startPoint[0],
+                  pointtestLocal2
+                ])
+                // this.updatePlaneGeometry(plane, [localIntersection, point1, startPoint[0], point2])
+              }
+              break
+            default:
+              break
           }
         }
       }
+      //如果未添加过单机监听事件则添加
+      if (!isEventListenerAdd) {
+        // add = addOnce(localIntersection)
+        window.addEventListener(
+          'pointerdown',
+          async (event1) => {
+            if (event1.button === 0) {
+              if (this.plotType == 'text') {
+                const localIntersection = this.convertPos(event1.clientX, event1.clientY)
+                drawObjects = await this.addText(startPoint[0], localIntersection)
+              }
+              // startPoint = []
+              startPoint = this.plotType !== 'polylines' ? [] : [localIntersection]
+              // drawObjects = this.plotType !== 'polylines' ? null : drawObjects
+              drawObjects = null
+              this.plotType !== 'point' &&
+                this.plotType !== 'polyline' &&
+                window.removeEventListener('mousemove', onMouseMove) //移除鼠标移动监听事件
+              this.plotType !== 'point' &&
+                this.plotType !== 'polyline' &&
+                window.addEventListener('pointerdown', onMouseDown) //再次添加鼠标左键单击监听事件
+              isEventListenerAdd = false
+            }
+            // //右键单击绘制结束
+            // if (event1.button === 2) {
+            //   startPoint = []
+            //   drawObjects = null
+            //   window.removeEventListener('mousemove', onMouseMove)
+            // }
+          },
+          { once: true }
+        )
+        isEventListenerAdd = true
+      }
     }
-    // window.addEventListener('mousemove', onMouseMove, false)
-    window.addEventListener('pointerdown', onMouseDown)
+    //
+    if (this.plotType == 'point') {
+      window.addEventListener('mousemove', onMouseMove)
+    } else {
+      window.addEventListener('pointerdown', onMouseDown)
+    }
+
+    window.addEventListener(
+      'pointerdown',
+      (event) => {
+        if (event.button === 2) {
+          window.removeEventListener('pointerdown', onMouseDown)
+          window.removeEventListener('mousemove', onMouseMove)
+          if (this.auxiliaryPlanes !== null) {
+            this.scene.remove(this.auxiliaryPlanes)
+            this.auxiliaryPlanes = null
+            this.entitiesCanBePicked = []
+            // this.gui.destroy()
+          }
+        }
+      },
+      { once: false }
+    )
   }
 }

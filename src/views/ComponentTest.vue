@@ -1,36 +1,31 @@
 <script lang="ts" setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import router from '@/router'
-import DraggableCompounent from '@/components/draggableCompounent.vue'
-import SliderBar from '@/components/sliderBar.vue'
+import { DraggableCompounent, SliderBar } from '@/components/index'
+import { resizeWindow, draggable } from '@/utils/index'
 
+onMounted(() => {
+  draggable('aaa')
+  resizeWindow('aaa')
+})
+
+const progressData = ref(0)
 </script>
 
 <template>
-  <!-- <div class="home">
-    <div class="routerbox" @click="loadviews"></div>
-    <div class="routerbox">
-      {{ counter.testData }}
-    </div>
-    <el-select v-model="counter.testData" placeholder="Select" size="large" style="width: 240px">
-      <el-option
-        v-for="page in counter.PageInfo"
-        :key="page.layer"
-        :lable="page.name"
-        :value="page.layer"
-        @click="dataChage(page.name)"
-      >
-      </el-option>
-    </el-select>
-    <DraggableCompounent />
-  </div> -->
-  <!-- <div>{{ progressData }}</div>
-  <SliderBar v-model="progressData" dragDirection="horizontal" class="qwww1"
-    ><template v-slot:content>
-      <p class="no-select">{{ progressData }}</p>
-    </template></SliderBar
-  >
-  <SliderBar v-model="progressData" dragDirection="vertical" class="qwww" /> -->
+  <div class="home">
+    <div
+      id="aaa"
+      style="width: 10vw; height: 10vh; background-color: aqua; position: absolute"
+    ></div>
+    <div>{{ progressData }}</div>
+    <SliderBar v-model="progressData" dragDirection="horizontal" class="qwww1" :isDraggable="true"
+      ><template v-slot:content>
+        <p class="no-select">{{ progressData }}</p>
+      </template></SliderBar
+    >
+    <SliderBar v-model="progressData" dragDirection="vertical" class="qwww" :isDraggable="true" />
+  </div>
 
   <!-- <div class="container1">
     <div class="container2"></div>
@@ -40,29 +35,33 @@ import SliderBar from '@/components/sliderBar.vue'
 </template>
 
 <style lang="scss" scoped>
-.container1{
+.container1 {
   display: flex;
   background-color: bisque;
   height: 100vw;
-  .container2{
+  .container2 {
     height: 20vh;
     width: 20vw;
-    background-color: azure
+    background-color: azure;
   }
-  .container3{
+  .container3 {
     position: relative;
     height: 20vh;
     width: 20vw;
     top: 20vh;
-    background-color: rgb(30, 181, 181)
+    background-color: rgb(30, 181, 181);
   }
-  .container4{
+  .container4 {
     height: 20vh;
     width: 20vw;
-    background-color: rgb(43, 80, 80)
+    background-color: rgb(43, 80, 80);
   }
 }
 .home {
+  width: 100%;
+  height: 100%;
+
+  position: relative;
   .routerbox {
     background-color: aquamarine;
     padding-bottom: 4vh;

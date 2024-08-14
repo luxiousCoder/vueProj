@@ -1,8 +1,5 @@
 // Auto-generated file
-import Draggablecompounent from './draggableCompounent.vue';
-import Sliderbar from './sliderBar.vue';
+import DraggableCompounent from './draggableCompounent.vue'
+import SliderBar from './SliderBar.vue'
 
-export {
-  Draggablecompounent,
-  Sliderbar,
-};
+export { DraggableCompounent, SliderBar }

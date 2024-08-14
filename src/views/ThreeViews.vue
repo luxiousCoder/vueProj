@@ -1,16 +1,13 @@
 <script setup lang="ts">
 import { onBeforeMount, onMounted, ref, watch, Ref } from 'vue'
 import { threeScene } from '@/utils/index'
-
+import { resizeWindow, draggable } from '@/utils/index'
 let globalScene: Ref<threeScene | null> = ref(null)
 let text: any
 
-const genText = async () => {
-  text = await globalScene.value.createText()
-  console.log(text)
-}
-
 onMounted(() => {
+  // draggable('drawWindow1')
+  // resizeWindow('drawWindow1')
   globalScene.value = new threeScene('canvas')
 })
 </script>
@@ -18,16 +15,20 @@ onMounted(() => {
 <template>
   <div class="container">
     <div class="control">
-      <button @click="globalScene?.addBox()">addBox</button>
-      <button @click="globalScene?.plot()">addPickListener</button>
-      <button @click="globalScene?.addPlaneGeometry('12')">addPlaneGeometry</button>
-      <button @click="globalScene?.plot()">plot</button>
-      <button @click="genText">createText</button>
-      <button @click="globalScene?.updateText(text)">updateText</button>
+      <el-select name="" id="">
+        <el-option @click="globalScene?.addBox()" value="ad">addBox</el-option>
+        <el-option @click="globalScene?.plot('arrow')" value="ad1">arrow</el-option>
+        <el-option @click="globalScene?.plot('point')" value="ad23">point</el-option>
+        <el-option @click="globalScene?.plot('polylines')" value="ad233">polylines</el-option>
+        <el-option @click="globalScene?.plot('plane')" value="ad22">plane</el-option>
+        <el-option @click="globalScene?.plot('line')" value="ad13">line</el-option>
+      </el-select>
     </div>
-    <div class="canvasField">
+    <div class="canvasField" id="canvasField">
       <canvas id="canvas" class="drawCanvas"> </canvas>
-      <span v-if="globalScene != null" class="promptText">{{ globalScene.pickedText }}</span>
+      <span v-if="globalScene != null" class="promptText" id="promptText">{{
+        globalScene.pickedText
+      }}</span>
     </div>
   </div>
 </template>
@@ -35,12 +36,13 @@ onMounted(() => {
 <style scoped>
 .container {
   width: 100%;
-  height: 100%;
+  height: 98%;
+  border: none;
   display: flex;
   flex-direction: column;
   .control {
     width: 100%;
-    height: 10vh;
+    height: 15%;
     display: flex;
     gap: 1vw;
     align-items: center;
@@ -49,15 +51,16 @@ onMounted(() => {
   }
   .canvasField {
     position: relative;
+    height: 85%;
     .drawCanvas {
       width: 100%;
-      height: 80vh;
+      height: 100%;
       background-color: transparent;
       display: block;
     }
     .promptText {
-      height: 16vh;
-      width: 20vw;
+      width: 10%;
+      height: 15%;
       font-size: 1vw;
       left: 0;
       top: 0;
@@ -66,7 +69,6 @@ onMounted(() => {
       justify-content: center;
       position: absolute;
       background-color: antiquewhite;
-      z-index: 10000;
       flex-wrap: wrap;
     }
   }
